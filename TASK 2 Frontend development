@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Precision Calculator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="calculator">
+    <!-- Screen Readout Section -->
+    <div class="screen">
+      <div class="history" id="history"></div>
+      <div class="display" id="display">0</div>
+    </div>
+
+    <!-- Interface Controls Grid -->
+    <div class="keypad">
+      <button class="btn fn" data-action="clear">AC</button>
+      <button class="btn fn" data-action="backspace">&larr;</button>
+      <button class="btn op" data-action="percentage">%</button>
+      <button class="btn op" data-action="divide">&divide;</button>
+
+      <button class="btn num">7</button>
+      <button class="btn num">8</button>
+      <button class="btn num">9</button>
+      <button class="btn op" data-action="multiply">&times;</button>
+
+      <button class="btn num">4</button>
+      <button class="btn num">5</button>
+      <button class="btn num">6</button>
+      <button class="btn op" data-action="subtract">&minus;</button>
+
+      <button class="btn num">1</button>
+      <button class="btn num">2</button>
+      <button class="btn num">3</button>
+      <button class="btn op" data-action="add">+</button>
+
+      <button class="btn num zero-btn">0</button>
+      <button class="btn num">.</button>
+      <button class="btn equals" data-action="calculate">=</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: radial-gradient(circle at center, #1e2640 0%, #0b0e14 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Roboto, sans-serif;
+  padding: 1rem;
+}
+
+.calculator {
+  background: rgba(30, 39, 58, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  max-width: 360px;
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+/* Screen Panel styling */
+.screen {
+  background: rgba(11, 14, 20, 0.6);
+  padding: 1.5rem;
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  text-align: right;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.history {
+  color: #728299;
+  font-size: 0.95rem;
+  min-height: 1.2rem;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.5px;
+}
+
+.display {
+  color: #ffffff;
+  font-size: 2.5rem;
+  font-weight: 300;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Structural Button Layout */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  color: #e2e8f0;
+  font-size: 1.25rem;
+  font-weight: 400;
+  padding: 1.1rem 0;
+  border-radius: 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.1s ease;
+}
+
+.btn:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Semantic groupings */
+.btn.op {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  font-weight: 500;
+}
+
+.btn.op:active {
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.btn.fn {
+  background: rgba(239, 68, 68, 0.08);
+  color: #f87171;
+}
+
+.btn.fn:active {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.btn.equals {
+  grid-column: span 2;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn.equals:active {
+  background: #1d4ed8;
+}
+
+.zero-btn {
+  grid-column: span 1;
+const displayElement = document.getElementById('display');
+const historyElement = document.getElementById('history');
+const keypad = document.querySelector('.keypad');
+
+let currentOperand = '0';
+let previousOperand = '';
+let activeOperator = null;
+let operationJustCompleted = false;
+
+const operatorSymbols = {
+  add: '+',
+  subtract: '−',
+  multiply: '×',
+  divide: '÷',
+  percentage: '%'
+};
+
+// --- Core Input State Operations ---
+
+function appendNumber(number) {
+  // Prevent duplicate decimals
+  if (number === '.' && currentOperand.includes('.')) return;
+
+  if (currentOperand === '0' && number !== '.') {
+    currentOperand = number;
+  } else if (operationJustCompleted) {
+    currentOperand = number;
+    operationJustCompleted = false;
+  } else {
+    currentOperand += number;
+  }
+  updateDisplay();
+}
+
+function handleOperator(operatorAction) {
+  if (operatorAction === 'percentage') {
+    currentOperand = (parseFloat(currentOperand) / 100).toString();
+    updateDisplay();
+    return;
+  }
+
+  if (activeOperator && !operationJustCompleted) {
+    executeCalculation();
+  }
+
+  previousOperand = currentOperand;
+  activeOperator = operatorAction;
+  operationJustCompleted = true;
+  updateDisplay();
+}
+
+function executeCalculation() {
+  if (!activeOperator || operationJustCompleted) return;
+
+  const prev = parseFloat(previousOperand);
+  const current = parseFloat(currentOperand);
+  if (isNaN(prev) || isNaN(current)) return;
+
+  let result = 0;
+
+  switch (activeOperator) {
+    case 'add': result = prev + current; break;
+    case 'subtract': result = prev - current; break;
+    case 'multiply': result = prev * current; break;
+    case 'divide':
+      if (current === 0) {
+        resetCalculator();
+        displayElement.innerText = "Error: Div by 0";
+        return;
+      }
+      result = prev / current;
+      break;
+    default: return;
+  }
+
+  // Precision fix prevents floating point math anomalies (e.g., 0.1 + 0.2)
+  currentOperand = stripTrailingZeros(Number(result.toFixed(10)));
+  historyElement.innerText = `${prev} ${operatorSymbols[activeOperator]} ${current} =`;
+  activeOperator = null;
+  operationJustCompleted = true;
+  updateDisplay();
+}
+
+function stripTrailingZeros(num) {
+  return parseFloat(num.toString()).toString();
+}
+
+function deleteLastDigit() {
+  if (operationJustCompleted) {
+    historyElement.innerText = '';
+    return;
+  }
+  if (currentOperand.length <= 1) {
+    currentOperand = '0';
+  } else {
+    currentOperand = currentOperand.slice(0, -1);
+  }
+  updateDisplay();
+}
+
+function resetCalculator() {
+  currentOperand = '0';
+  previousOperand = '';
+  activeOperator = null;
+  operationJustCompleted = false;
+  historyElement.innerText = '';
+  updateDisplay();
+}
+
+function updateDisplay() {
+  displayElement.innerText = currentOperand;
+  
+  if (activeOperator && operationJustCompleted) {
+    historyElement.innerText = `${previousOperand} ${operatorSymbols[activeOperator]}`;
+  }
+}
+
+// --- Interface Event Mappings ---
+
+keypad.addEventListener('click', (e) => {
+  if (!e.target.matches('button')) return;
+
+  const button = e.target;
+  if (button.classList.contains('num')) {
+    appendNumber(button.innerText);
+  } else if (button.classList.contains('op')) {
+    handleOperator(button.dataset.action);
+  } else if (button.classList.contains('equals')) {
+    executeCalculation();
+  } else if (button.dataset.action === 'clear') {
+    resetCalculator();
+  } else if (button.dataset.action === 'backspace') {
+    deleteLastDigit();
+  }
+});
+
+// --- Bonus Keyboard Mapping Interface ---
+
+document.addEventListener('keydown', (e) => {
+  if (e.key >= '0' && e.key <= '9' || e.key === '.') {
+    appendNumber(e.key);
+  } else if (e.key === '+') {
+    handleOperator('add');
+  } else if (e.key === '-') {
+    handleOperator('subtract');
+  } else if (e.key === '*') {
+    handleOperator('multiply');
+  } else if (e.key === '/') {
+    e.preventDefault(); // Blocks default browser search hooks
+    handleOperator('divide');
+  } else if (e.key === '%') {
+    handleOperator('percentage');
+  } else if (e.key === 'Enter' || e.key === '=') {
+    e.preventDefault();
+    executeCalculation();
+  } else if (e.key === 'Backspace') {
+    deleteLastDigit();
+  } else if (e.key === 'Escape') {
+    resetCalculator();
+  }
+});
+
+}
